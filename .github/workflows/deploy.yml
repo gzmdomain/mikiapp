@@ -3,7 +3,7 @@ name: Deploy to Azure Web App
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, mikinew ]
 
 permissions:
   contents: read

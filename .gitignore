@@ -90,3 +90,4 @@ local.settings.json
 appsettings.Local.json
 dotnet-chat-app/appsettings.Development.json
 dotnet-chat-app/appsettings.json
+mikicosmosdb.py

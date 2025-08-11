@@ -1,0 +1,92 @@
+# Visual Studio / .NET
+bin/
+obj/
+**/bin/
+**/obj/
+/.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+*.env
+secrets.json
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.*.local.json
+# IMPORTANT: keep real appsettings out of git
+**/appsettings.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.envrc
+
+# Node/npm (if any frontend tooling is added later)
+node_modules/
+
+# Others
+*.coverage
+*.tgz
+# OS
+*.DS_Store
+Thumbs.db
+
+# VS/VSCode
+.vs/
+.vscode/
+*.code-workspace
+
+# .NET build outputs
+bin/
+obj/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Publish outputs
+**/publish/
+
+# Node
+node_modules/
+
+# Python
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Logs/temp
+*.log
+logs/
+temp/
+tmp/
+
+# Azure
+local.settings.json
+
+# Optional: ignore local appsettings overrides (keep base checked-in)
+appsettings.Local.json
+dotnet-chat-app/appsettings.Development.json
+dotnet-chat-app/appsettings.json

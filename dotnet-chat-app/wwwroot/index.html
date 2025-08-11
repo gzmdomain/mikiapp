@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat 应用 · 图片上传</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%23085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H7l-4 3v-3H5a2 2 0 0 0 2-2v-4'/%3E%3Cpath d='M17 8a5 5 0 0 1-9.33 2.5L3 12l1.5-4.5A5 5 0 1 1 17 8Z'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="logo">💬</span>
+      <div class="titles">
+        <h1>对话 · 图片上传</h1>
+        <p class="subtitle">使用你的 OpenAI/Azure OpenAI 接口</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card chat">
+      <div class="card-head">
+        <h2>聊天</h2>
+      </div>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <div class="composer">
+        <textarea id="input" rows="2" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+        <button id="send" class="btn primary" aria-label="发送">发送</button>
+      </div>
+      <div id="chatError" class="alert hidden" role="alert"></div>
+    </section>
+
+    <section class="card upload">
+      <div class="card-head">
+        <h2>图片上传</h2>
+      </div>
+      <div id="dropzone" class="dropzone" tabindex="0">
+        <input type="file" id="file" accept="image/*" hidden />
+        <div>
+          <p>拖拽图片到这里，或 <button id="browse" class="link-btn" type="button">点击选择</button></p>
+          <p class="hint">仅支持图片类型，最大约 20 MB</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="upload" class="btn">上传</button>
+        <div id="progress" class="progress hidden">
+          <div class="bar" style="width:0%"></div>
+        </div>
+      </div>
+      <div id="uploadResult" class="result"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Tips: 若聊天失败，请检查 appsettings.json 的 OpenAI 配置。</span>
+  </footer>
+
+  <template id="msg-tpl">
+    <div class="msg">
+      <div class="avatar"></div>
+      <div class="bubble">
+        <div class="role"></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    const messages = [];
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => document.querySelectorAll(sel);
+
+    function append(role, content) {
+      const tpl = document.getElementById('msg-tpl');
+      const node = tpl.content.firstElementChild.cloneNode(true);
+      node.classList.add(role === 'user' ? 'me' : 'bot');
+      node.querySelector('.role').textContent = role === 'user' ? '你' : '助手';
+      node.querySelector('.content').textContent = content;
+      $('#messages').appendChild(node);
+      node.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function setBusy(isBusy) {
+      $('#send').disabled = isBusy;
+      $('#input').disabled = isBusy;
+    }
+
+    async function sendMessage() {
+      const input = $('#input');
+      const text = input.value.trim();
+      if (!text) return;
+      $('#chatError').classList.add('hidden');
+      messages.push({ role: 'user', content: text });
+      append('user', text);
+      input.value = '';
+      setBusy(true);
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg = (data && (data.error || data.message)) || `请求失败：${res.status}`;
+          showError(msg);
+          return;
+        }
+        const content = (data && data.content) || '';
+        messages.push({ role: 'assistant', content });
+        append('assistant', content);
+      } catch (err) {
+        showError('网络错误：' + (err?.message || err));
+      } finally {
+        setBusy(false);
+        $('#input').focus();
+      }
+    }
+
+    function showError(text) {
+      const el = $('#chatError');
+      el.textContent = text;
+      el.classList.remove('hidden');
+      append('assistant', '抱歉，处理失败。详情见上方提示。');
+    }
+
+    $('#send').addEventListener('click', sendMessage);
+    $('#input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Upload logic
+    const dz = $('#dropzone');
+    const fileInput = $('#file');
+    const browse = $('#browse');
+    const progress = $('#progress');
+    const bar = progress.querySelector('.bar');
+
+    browse.addEventListener('click', () => fileInput.click());
+    dz.addEventListener('click', () => fileInput.click());
+    dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+    dz.addEventListener('drop', (e) => {
+      e.preventDefault(); dz.classList.remove('drag');
+      if (e.dataTransfer.files?.length) fileInput.files = e.dataTransfer.files;
+    });
+
+    $('#upload').addEventListener('click', async () => {
+      const f = fileInput.files?.[0];
+      if (!f) return alert('请选择图片');
+      if (!f.type.startsWith('image/')) return alert('仅支持图片类型');
+      progress.classList.remove('hidden');
+      bar.style.width = '20%';
+      try {
+        const fd = new FormData();
+        fd.append('file', f);
+        const res = await fetch('/api/files/upload', { method: 'POST', body: fd });
+        bar.style.width = '80%';
+        const out = $('#uploadResult');
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          out.innerHTML = `<div class="alert">上传失败：${res.status} ${(data && (data.error || data.message)) || ''}</div>`;
+          return;
+        }
+        bar.style.width = '100%';
+        out.innerHTML = `上传成功：<a href="${data.url}" target="_blank" rel="noopener">${data.url}</a>`;
+      } catch (e) {
+        $('#uploadResult').innerHTML = `<div class="alert">网络错误：${e?.message || e}</div>`;
+      } finally {
+        setTimeout(() => { progress.classList.add('hidden'); bar.style.width = '0%'; }, 800);
+      }
+    });
+  </script>
+</body>
+</html>

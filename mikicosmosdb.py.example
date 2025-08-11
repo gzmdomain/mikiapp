@@ -1,0 +1,59 @@
+import os
+import pymongo
+from random import randint
+
+# Read connection string from environment variable to avoid committing secrets.
+CONNECTION_STRING = os.getenv("COSMOSDB_MONGO_CONN", "")
+DB_NAME = "miki-mongodb-sample-database"
+UNSHARDED_COLLECTION_NAME = "unsharded-sample-collection"
+SAMPLE_FIELD_NAME = "sample_field"
+
+def delete_document(collection, document_id):
+    collection.delete_one({"_id": document_id})
+    print(f"Deleted document with _id {document_id}")
+
+
+def read_document(collection, document_id):
+    print(f"Found a document with _id {document_id}: {collection.find_one({'_id': document_id})}")
+
+
+def update_document(collection, document_id):
+    collection.update_one({"_id": document_id}, {"$set": {SAMPLE_FIELD_NAME: "Updated!"}})
+    print(f"Updated document with _id {document_id}: {collection.find_one({'_id': document_id})}")
+
+
+def insert_sample_document(collection):
+    document_id = collection.insert_one({SAMPLE_FIELD_NAME: randint(50, 500)}).inserted_id
+    print(f"Inserted document with _id {document_id}")
+    return document_id
+
+
+def create_database_unsharded_collection(client):
+    db = client[DB_NAME]
+    if DB_NAME not in client.list_database_names():
+        db.command({'customAction': "CreateDatabase", 'offerThroughput': 400})
+        print(f"Created db {DB_NAME} with shared throughput")
+
+    if UNSHARDED_COLLECTION_NAME not in db.list_collection_names():
+        db.command({'customAction': "CreateCollection", 'collection': UNSHARDED_COLLECTION_NAME})
+        print(f"Created collection {UNSHARDED_COLLECTION_NAME}")
+
+    return db[UNSHARDED_COLLECTION_NAME]
+
+
+def main():
+    if not CONNECTION_STRING:
+        raise RuntimeError("Set COSMOSDB_MONGO_CONN environment variable before running.")
+
+    client = pymongo.MongoClient(CONNECTION_STRING)
+    client.server_info()
+
+    collection = create_database_unsharded_collection(client)
+    document_id = insert_sample_document(collection)
+    read_document(collection, document_id)
+    update_document(collection, document_id)
+    delete_document(collection, document_id)
+
+
+if __name__ == '__main__':
+    main()

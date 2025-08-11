@@ -1,0 +1,40 @@
+name: Deploy to Azure Web App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    env:
+      WORKING_DIR: dotnet-chat-app
+      PUBLISH_DIR: dotnet-chat-app/publish
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore $env:WORKING_DIR/dotnet-chat-app.csproj
+
+      - name: Build
+        run: dotnet build $env:WORKING_DIR/dotnet-chat-app.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish $env:WORKING_DIR/dotnet-chat-app.csproj --configuration Release --no-build --output $env:PUBLISH_DIR
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: mikiapp
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          package: ${{ env.PUBLISH_DIR }}
